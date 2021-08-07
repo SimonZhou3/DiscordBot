@@ -1,2 +1,2 @@
-"# Simon" 
-"# DiscordBot" 
+##INTRODUCTION
+Welcome to my Discord Bot :).
