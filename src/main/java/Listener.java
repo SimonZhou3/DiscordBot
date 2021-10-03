@@ -22,7 +22,6 @@ public class Listener extends ListenerAdapter {
                commands.get(messageReceived, event);
             }
         }
-
         }
 
 

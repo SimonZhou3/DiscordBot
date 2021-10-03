@@ -15,8 +15,7 @@ public class ReadJson  {
         FileReader reader = new FileReader("./src/data/" + playlistName + ".json");
 
        Object obj =  jsonParser.parse(reader);
-        JSONObject jsonObject = (JSONObject) obj;
-        JSONArray jsonArray = (JSONArray) jsonObject.get("playlist");
+        JSONArray jsonArray = (JSONArray) obj;
 
         if (jsonArray.isEmpty()) {
             throw new ParseException(-1);
@@ -26,20 +25,19 @@ public class ReadJson  {
     }
 
 
-    public List<String> readJSONData (String playlistName) throws IOException, ParseException {
+    public List<String> readJSONData (String playlistName,String key) throws IOException, ParseException {
         List<String> savedPlaylist = new ArrayList<>();
         JSONParser jsonParser = new JSONParser();
         FileReader reader = new FileReader("./src/data/" + playlistName + ".json");
 
         Object obj =  jsonParser.parse(reader);
-        JSONObject jsonObject = (JSONObject) obj;
-        JSONArray jsonArray = (JSONArray) jsonObject.get("playlist");
+        JSONArray jsonArray = (JSONArray) obj;
         if (jsonArray.isEmpty() )
             throw new ParseException(-1);
 
         for (int i = 0 ; i < jsonArray.size(); i++) {
             JSONObject temp = (JSONObject) jsonArray.get(i);
-            String link = (String) temp.get("link");
+            String link = (String) temp.get(key);
             System.out.println(link);
             savedPlaylist.add(i,link);
         }

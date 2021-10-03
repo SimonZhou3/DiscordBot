@@ -18,16 +18,11 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import java.awt.*;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.URL;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -47,7 +42,12 @@ enum command {
     REPEAT,
     QUEUE,
     NOW,
-    SEEK
+    SEEK,
+    CLEAR,
+    PLAYLIST,
+    READ,
+    CREATE,
+    SAVE
 }
 
 public class CommandMap  extends ListenerAdapter {
@@ -78,10 +78,15 @@ public class CommandMap  extends ListenerAdapter {
         musicCommands.add(String.valueOf(PREFIX + command.LEAVE).toLowerCase() + " -- Remove bot from channel");
         musicCommands.add(String.valueOf(PREFIX + command.PLAY).toLowerCase() + " [URL/Keyword] -- adds the music into the queue ");
         musicCommands.add(String.valueOf(PREFIX + command.SKIP).toLowerCase() + " -- Skips current music playing and plays next in the queue");
+        musicCommands.add(String.valueOf(PREFIX + command.CLEAR).toLowerCase() + " -- Clears the current music queue" );
         musicCommands.add(String.valueOf(PREFIX + command.QUEUE).toLowerCase() + " -- Prints all the songs in the queue");
         musicCommands.add(String.valueOf(PREFIX + command.NOW).toLowerCase() + " -- Prints the information of the currently playing song");
         musicCommands.add(String.valueOf(PREFIX + command.REPEAT).toLowerCase() + " -- Repeats the current song");
         musicCommands.add(String.valueOf(PREFIX + command.SEEK).toLowerCase() + " [seconds] -- seeks to a specific place in the song");
+        playlistCommands.add(String.valueOf(PREFIX + command.CREATE).toLowerCase() + "[name] -- Creates an instance of a playlist to add songs");
+        playlistCommands.add(String.valueOf(PREFIX + command.SAVE).toLowerCase() + "[name] [url] -- saves the link of a audio source to the specified playlist");
+        playlistCommands.add(String.valueOf(PREFIX + command.READ).toLowerCase() + "[name] -- Reads the instance of the playlist");
+        playlistCommands.add(String.valueOf(PREFIX + command.PLAYLIST).toLowerCase() + "[name] -- Queues all songs in the playlist");
     }
 
     //Detecting whether user initiated a command
@@ -158,16 +163,14 @@ public class CommandMap  extends ListenerAdapter {
             case PREFIX + "save":
                 savePlaylist(command,event);
                 break;
-            case PREFIX +"remove":
-                removePlaylist(command,event);
             case PREFIX + "create":
-//                createPlaylist(command,event);
+               createPlaylist(command,event);
                 break;
             case PREFIX + "playlist":
                 playPlaylist(command,event);
                 break;
-            case PREFIX + "battle":
-                new FPS(event);
+            case PREFIX + "describe":
+                describePlaylist(command,event);
                 break;
             default:
                 System.out.println("Enter default");
@@ -175,11 +178,8 @@ public class CommandMap  extends ListenerAdapter {
         }
     }
 
-
-
-    private void removePlaylist(String[] message, MessageReceivedEvent event) {
+    private void describePlaylist(String[] command, MessageReceivedEvent event) {
     }
-
 
     private void playPlaylist(String[] message, MessageReceivedEvent event) {
         String playlistName = getArg(message);
@@ -189,7 +189,7 @@ public class CommandMap  extends ListenerAdapter {
         Member user = event.getMember();
         String link ="";
             try {
-               List<String> playlist = reader.readJSONData(playlistName);
+               List<String> playlist = reader.readJSONData(playlistName,"link");
                 Collections.shuffle(playlist);
                for (int i = 0; i < playlist.size();i++) {
                    link = playlist.get(i);
@@ -214,41 +214,55 @@ public class CommandMap  extends ListenerAdapter {
         return arg;
     }
 
-//    private void createPlaylist(String[] message, MessageReceivedEvent event) {
-//        File file = new File("./src/data/"+getArg(message)+".json");
-//        if (!file.exists()) {
-//            try {
-//                file.createNewFile();
-//                FileWriter fileWriter = new FileWriter("./src/data/1030154789123456789.txt");
-//                PrintWriter printWriter= new PrintWriter(fileWriter);
-//                printWriter.read
-//
-//            } catch (IOException e) {
-//                //
-//            }
-//        } else {
-//            event.getChannel().sendMessage("This playlist has already been made!");
-//        }
-//    }
+    //MODIFIES: this
+    //EFFECT: Creates a JSON file with the name of the playlist, Playlist name must be one word.
+private void createPlaylist(String[] message, MessageReceivedEvent event) {
+        if (message.length!= 2) {
+            event.getChannel().sendMessage("Playlist name must be one word only!").queue();
+            return;
+        } else {
+            String playlistName = message[1];
+            File tempFile = new File("./src/data/" + playlistName + ".json");
+            if (!tempFile.exists() && !tempFile.isDirectory()) { //if file does not exist or is a directory, then throw input exception
+                WriteJson writer = new WriteJson();
+                try {
+                    tempFile.createNewFile();
+                    event.getChannel().sendMessage("Playlist " +playlistName + " has been created").queue();
+                    writer.writeMultipleJson("ListOfPlaylist",playlistName,"","name","description");
+
+                } catch (IOException e) {
+                    event.getChannel().sendMessage("Playlist " + playlistName + " already exists!").queue();
+                } catch (ParseException e) {
+                    //stub
+                }
+            } else {
+                event.getChannel().sendMessage("Playlist " + playlistName + " already exists!").queue();
+            }
+        }
+        return;
+}
 
     private void savePlaylist(String[] message, MessageReceivedEvent event) {
         String jsonName = message[1];
         String url = "";
         for (int i = 2; i < message.length; i ++) {
-            url += message[i] + " ";
+            url += message[i];
+            if (i + 1 < message.length) {
+                url += " ";
+            }
         }
         if (!isUrl(url))
             url = "ytsearch:" + url;
         String formatter = "";
         WriteJson writer = new WriteJson();
         try {
-          List<String> playlist = writer.writeJson(jsonName,url);
+          List<String> playlist = writer.writeJson(jsonName,url,"link");
             for (int i = 0; i < playlist.size(); i++) {
                 formatter += playlist.get(i) +"\n";
             }
             event.getChannel().sendMessage("Saved to playlist " + jsonName).queue();
         } catch (IOException e) {
-            event.getChannel().sendMessage("Error in json file").queue();
+            event.getChannel().sendMessage("JSON file does not exist").queue();
         } catch (ParseException e) {
             event.getChannel().sendMessage("Error in reading json file").queue();
         }
@@ -261,7 +275,7 @@ public class CommandMap  extends ListenerAdapter {
         String formatter = "";
 
         try {
-            List<String> playlist = reader.readJSONData(playlistName);
+            List<String> playlist = reader.readJSONData(playlistName, "link");
             size = playlist.size();
             for (int i = 0; i < playlist.size(); i++) {
                 int position = i + 1;
@@ -491,7 +505,7 @@ public class CommandMap  extends ListenerAdapter {
                 MessageEmbed messageEmbed = new EmbedBuilder()
                         .setDescription("No Songs in the queue")
                         .build();
-                message.editMessage(messageEmbed).queue();
+                message. editMessage(messageEmbed).queue();
                 return;
             }
             MessageEmbed messageEmbed = new EmbedBuilder()
@@ -668,14 +682,14 @@ public class CommandMap  extends ListenerAdapter {
     private void join(MessageReceivedEvent event) {
         VoiceChannel channel = event.getMember().getVoiceState().getChannel();
         if (channel == null) {
-            event.getChannel().sendMessage("You are not in a voice channel!");
+            event.getChannel().sendMessage("You are not in a voice channel!").queue();
             return;
         }
         AudioManager audioManager = event.getGuild().getAudioManager();
         audioManager.openAudioConnection(channel);
     }
 
-    //Search an Anime using jikanAPI using name. NOTE: Request to find MAL_ID and call the function ani
+    //Search an Anime using Jikan API using name. NOTE: Request to find MAL_ID and call the function ani
 
 
     private void searchByName (String[] message, MessageReceivedEvent event) {
@@ -911,6 +925,11 @@ public class CommandMap  extends ListenerAdapter {
         for (String c : musicCommands) {
             message += c + "\n";
         }
+        message += "\n";
+        message += "Playlist Commands: \n";
+        for (String c : playlistCommands) {
+            message += c + "\n";
+        }
         message += "```";
         event.getChannel().sendMessage(message).queue();
 
@@ -944,6 +963,10 @@ public class CommandMap  extends ListenerAdapter {
             }
         }
     }
+
+
+
+    
 }
 
 
