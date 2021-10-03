@@ -9,8 +9,8 @@ Ikura is a multi-featured Discord bot coded in Java using <a href= https://githu
  ## Features
   Ikura features many functional categories:
  * [🎵 Music](#Music)
- * [📺 Anime Information](#Anime Information)
- * [📅 General Moderation](#General Moderation)
+ * [📺 Anime Information](#Anime-Information)
+ * [📅 General Moderation](#General-Moderation)
  
  ### Music
  Ikura is able to play audio sources using an open source API 
