@@ -1,3 +1,5 @@
+package bot;
+
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
@@ -16,7 +18,7 @@ public class PlayerManager {
 
     private static PlayerManager INSTANCE;
 
-    private final Map<Long,GuildMusicManager> musicManagers;
+    private final Map<Long, GuildMusicManager> musicManagers;
     private final AudioPlayerManager audioPlayerManager;
 
 
@@ -66,7 +68,7 @@ public class PlayerManager {
                         musicManager.trackScheduler.queue(at);
                     textChannel.sendMessage("` Adding to Queue: ")
                             .append(String.valueOf(+playlist.size()))
-                            .append(" songs from Playlist ")
+                            .append(" songs from bot.Playlist ")
                             .append(audioPlaylist.getName() + "`")
                             .queue();
                 }

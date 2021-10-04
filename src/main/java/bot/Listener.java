@@ -1,3 +1,5 @@
+package bot;
+
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -12,7 +14,7 @@ public class Listener extends ListenerAdapter {
                 System.out.print(s + " "); //prints out the message
             }
         System.out.println();
-            if (messageReceived[0].startsWith(PREFIX)) { //if the message is a command then ....
+            if (messageReceived[0].startsWith(PREFIX)) { //if the message is a bot.command then ....
                Member user = event.getMember();
                try {
                    System.out.println("User: " + user.getEffectiveName());

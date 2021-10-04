@@ -1,3 +1,4 @@
+package bot;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.JDA;
@@ -12,13 +13,13 @@ public class Main {
 
     public static void main (String args[]) throws Exception {
            // Activates discord Bot using secure dotenv to keep API key safe
-            Dotenv dotenv = Dotenv.load();
+            Dotenv dotenv = Dotenv.configure().filename(".env").load();
             jda = JDABuilder.createDefault(dotenv.get("MY_ENV_APIKEY"));
             jda.setActivity(Activity.streaming(" -help","https://www.twitch.tv/gumsf"));
             JDA bot;
             bot = jda.build();
             bot.addEventListener(new Listener());
-//            bot.addEventListener(new CommandMap());
+//            bot.addEventListener(new bot.CommandMap());
 
         }
     }

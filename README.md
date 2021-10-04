@@ -9,7 +9,7 @@ Ikura is a multi-featured Discord bot coded in Java using <a href= https://githu
  ## Features
   Ikura features many functional categories:
  * [🎵 Music](#Music)
- * [📺 Anime Information](#Anime-Information)
+ * [📺 bot.Anime Information](#Anime-Information)
  * [📅 General Moderation](#General-Moderation)
  
  ### Music
@@ -24,11 +24,11 @@ Ikura is a multi-featured Discord bot coded in Java using <a href= https://githu
            
  <img width="627" height="220" style="float: left; margin: 0 10px 0 0;" alt="Ikura" src="https://i.imgur.com/M627ihs.png">  
  
-  ### Anime Information
-  Ikura can process and reade information from MyAnimeList's Database using <a href= https://github.com/jikan-me/jikan>Jikan</a> API. Anime commands include:
+  ### bot.Anime Information
+  Ikura can process and reade information from MyAnimeList's Database using <a href= https://github.com/jikan-me/jikan>Jikan</a> API. bot.Anime commands include:
   * **Upcoming Animes:** `future`
-  * **Recommended Anime:** `ani`
-  * **Specific Anime:** `search` 
+  * **Recommended bot.Anime:** `ani`
+  * **Specific bot.Anime:** `search` 
   
    <img style="float: left;" alt="Ikura" src="https://i.imgur.com/kYi7uTV.png">  
  

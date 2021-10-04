@@ -1,3 +1,5 @@
+package bot;
+
 import com.github.doomsdayrs.jikan4java.core.Connector;
 import com.github.doomsdayrs.jikan4java.data.enums.Season;
 import com.github.doomsdayrs.jikan4java.data.model.main.manga.Manga;
@@ -64,7 +66,7 @@ public class CommandMap  extends ListenerAdapter {
     private static final int SIZEIMAGE = 22;
 
 
-    //Creates a fixated command list for the bot to use
+    //Creates a fixated bot.command list for the bot to use
     public CommandMap() {
         generalCommands.add(String.valueOf(PREFIX + command.HELP).toLowerCase() + " -- Shows List of commands");
         generalCommands.add(String.valueOf(PREFIX +command.INFO).toLowerCase() + " -- Information about me");
@@ -89,7 +91,7 @@ public class CommandMap  extends ListenerAdapter {
         playlistCommands.add(String.valueOf(PREFIX + command.PLAYLIST).toLowerCase() + "[name] -- Queues all songs in the playlist");
     }
 
-    //Detecting whether user initiated a command
+    //Detecting whether user initiated a bot.command
     public void get(String[] command, MessageReceivedEvent event) {
         switch (command[0].toLowerCase()) {
             case PREFIX + "help" :
@@ -215,10 +217,10 @@ public class CommandMap  extends ListenerAdapter {
     }
 
     //MODIFIES: this
-    //EFFECT: Creates a JSON file with the name of the playlist, Playlist name must be one word.
+    //EFFECT: Creates a JSON file with the name of the playlist, bot.Playlist name must be one word.
 private void createPlaylist(String[] message, MessageReceivedEvent event) {
         if (message.length!= 2) {
-            event.getChannel().sendMessage("Playlist name must be one word only!").queue();
+            event.getChannel().sendMessage("bot.Playlist name must be one word only!").queue();
             return;
         } else {
             String playlistName = message[1];
@@ -227,16 +229,16 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                 WriteJson writer = new WriteJson();
                 try {
                     tempFile.createNewFile();
-                    event.getChannel().sendMessage("Playlist " +playlistName + " has been created").queue();
+                    event.getChannel().sendMessage("bot.Playlist " +playlistName + " has been created").queue();
                     writer.writeMultipleJson("ListOfPlaylist",playlistName,"","name","description");
 
                 } catch (IOException e) {
-                    event.getChannel().sendMessage("Playlist " + playlistName + " already exists!").queue();
+                    event.getChannel().sendMessage("bot.Playlist " + playlistName + " already exists!").queue();
                 } catch (ParseException e) {
                     //stub
                 }
             } else {
-                event.getChannel().sendMessage("Playlist " + playlistName + " already exists!").queue();
+                event.getChannel().sendMessage("bot.Playlist " + playlistName + " already exists!").queue();
             }
         }
         return;
@@ -689,7 +691,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
         audioManager.openAudioConnection(channel);
     }
 
-    //Search an Anime using Jikan API using name. NOTE: Request to find MAL_ID and call the function ani
+    //Search an bot.Anime using Jikan API using name. NOTE: Request to find MAL_ID and call the function ani
 
 
     private void searchByName (String[] message, MessageReceivedEvent event) {
@@ -916,7 +918,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
             message += c + "\n";
         }
         message += "\n";
-        message += "Anime Commands: \n";
+        message += "bot.Anime Commands: \n";
         for (String c: animeCommands) {
             message += c +"\n";
         }
@@ -926,7 +928,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
             message += c + "\n";
         }
         message += "\n";
-        message += "Playlist Commands: \n";
+        message += "bot.Playlist Commands: \n";
         for (String c : playlistCommands) {
             message += c + "\n";
         }
