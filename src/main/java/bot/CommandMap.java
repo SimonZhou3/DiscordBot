@@ -229,16 +229,16 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                 WriteJson writer = new WriteJson();
                 try {
                     tempFile.createNewFile();
-                    event.getChannel().sendMessage("bot.Playlist " +playlistName + " has been created").queue();
+                    event.getChannel().sendMessage("Playlist " +playlistName + " has been created").queue();
                     writer.writeMultipleJson("ListOfPlaylist",playlistName,"","name","description");
 
                 } catch (IOException e) {
-                    event.getChannel().sendMessage("bot.Playlist " + playlistName + " already exists!").queue();
+                    event.getChannel().sendMessage("Playlist " + playlistName + " already exists!").queue();
                 } catch (ParseException e) {
                     //stub
                 }
             } else {
-                event.getChannel().sendMessage("bot.Playlist " + playlistName + " already exists!").queue();
+                event.getChannel().sendMessage("Playlist " + playlistName + " already exists!").queue();
             }
         }
         return;
