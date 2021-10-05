@@ -63,7 +63,7 @@ public class CommandMap  extends ListenerAdapter {
     private int pageNumber = 0;
     private static final String PREFIX = "-";
     private static final int SIZEIMAGE = 22;
-    private MongoClient client = MongoClients.create("mongodb+srv://SimonZhou:Simon_zhou123@cluster0.fdn49.mongodb.net/myFirstDatabase?retryWrites=true&w=majority");
+    private MongoClient client = MongoClients.create(System.getenv("MONGO"));
     private MongoDatabase db = client.getDatabase("playlist");
     private MongoDatabase dbAnime = client.getDatabase("anime");
 
@@ -716,7 +716,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                     .addField("Rating",  score  + " ⭐",true)
                     .build();
             event.getChannel().sendMessage(embed).queue();
-//            col.deleteOne(doc);
+
 
 
         } catch (Exception e) {

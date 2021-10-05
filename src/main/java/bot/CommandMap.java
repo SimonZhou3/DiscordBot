@@ -63,7 +63,7 @@ public class CommandMap  extends ListenerAdapter {
     private int pageNumber = 0;
     private static final String PREFIX = "-";
     private static final int SIZEIMAGE = 22;
-    private MongoClient client = MongoClients.create(System.getenv("KEY"));
+    private MongoClient client = MongoClients.create(System.getenv("MONGO"));
     private MongoDatabase db = client.getDatabase("playlist");
     private MongoDatabase dbAnime = client.getDatabase("anime");
 
