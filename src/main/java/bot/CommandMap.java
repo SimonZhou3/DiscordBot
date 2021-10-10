@@ -187,7 +187,6 @@ public class CommandMap  extends ListenerAdapter {
 
     private void playPlaylist(String[] message, MessageReceivedEvent event) {
         String playlistName = getArg(message);
-        ReadJson reader = new ReadJson();
         TextChannel channel = event.getTextChannel();
         Member self = event.getGuild().getSelfMember();
         Member user = event.getMember();
