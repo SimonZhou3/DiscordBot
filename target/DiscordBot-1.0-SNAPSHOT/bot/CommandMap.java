@@ -6,6 +6,7 @@ import com.github.doomsdayrs.jikan4java.data.model.main.manga.Manga;
 import com.github.doomsdayrs.jikan4java.data.model.main.season.SeasonSearch;
 import com.github.doomsdayrs.jikan4java.data.model.main.season.SeasonSearchAnime;
 import com.github.doomsdayrs.jikan4java.data.model.support.basic.meta.Genre;
+import com.mongodb.client.*;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.*;
@@ -14,13 +15,11 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.managers.AudioManager;
 import okhttp3.ResponseBody;
-import org.json.simple.JSONArray;
+import org.bson.Document;
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 import java.awt.*;
-import java.io.*;
+import java.io.File;
 import java.net.URL;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -64,6 +63,9 @@ public class CommandMap  extends ListenerAdapter {
     private int pageNumber = 0;
     private static final String PREFIX = "-";
     private static final int SIZEIMAGE = 22;
+    private MongoClient client = MongoClients.create(System.getenv("MONGO"));
+    private MongoDatabase db = client.getDatabase("playlist");
+    private MongoDatabase dbAnime = client.getDatabase("anime");
 
 
     //Creates a fixated bot.command list for the bot to use
@@ -189,24 +191,22 @@ public class CommandMap  extends ListenerAdapter {
         TextChannel channel = event.getTextChannel();
         Member self = event.getGuild().getSelfMember();
         Member user = event.getMember();
-        String link ="";
-            try {
-               List<String> playlist = reader.readJSONData(playlistName,"link");
-                Collections.shuffle(playlist);
-               for (int i = 0; i < playlist.size();i++) {
-                   link = playlist.get(i);
-                   if (isUrl(playlist.get(i))) {
-                      link = link.replaceAll("\\s","");
-                   }
-                   handle(channel,self,user,link,event);
-
-               }
-            } catch (IOException e) {
-                event.getChannel().sendMessage("No File was Found").queue();
-            } catch (ParseException e) {
-                event.getChannel().sendMessage("Unable to read File").queue();
+        String link = "";
+        List<String> playlist = new ArrayList<>();
+        FindIterable<Document> iterable = db.getCollection(playlistName).find();
+        Iterator it = iterable.iterator();
+        while (it.hasNext()) {
+            Document doc = (Document) it.next();
+            link = (String) doc.get("link");
+            if (isUrl(link)) {
+                playlist.add(link);
             }
-            }
+        }
+        Collections.shuffle(playlist);
+        for (int i = 0; i < playlist.size(); i++) {
+            handle(channel,self,user,playlist.get(i),event);
+        }
+    }
 
     private String getArg(String[] message) {
         String arg = message[1];
@@ -220,32 +220,17 @@ public class CommandMap  extends ListenerAdapter {
     //EFFECT: Creates a JSON file with the name of the playlist, bot.Playlist name must be one word.
 private void createPlaylist(String[] message, MessageReceivedEvent event) {
         if (message.length!= 2) {
-            event.getChannel().sendMessage("bot.Playlist name must be one word only!").queue();
+            event.getChannel().sendMessage("Playlist name must be one word only!").queue();
             return;
         } else {
             String playlistName = message[1];
-            File tempFile = new File("./src/data/" + playlistName + ".json");
-            if (!tempFile.exists() && !tempFile.isDirectory()) { //if file does not exist or is a directory, then throw input exception
-                WriteJson writer = new WriteJson();
-                try {
-                    tempFile.createNewFile();
-                    event.getChannel().sendMessage("bot.Playlist " +playlistName + " has been created").queue();
-                    writer.writeMultipleJson("ListOfPlaylist",playlistName,"","name","description");
-
-                } catch (IOException e) {
-                    event.getChannel().sendMessage("bot.Playlist " + playlistName + " already exists!").queue();
-                } catch (ParseException e) {
-                    //stub
-                }
-            } else {
-                event.getChannel().sendMessage("bot.Playlist " + playlistName + " already exists!").queue();
-            }
+            db.getCollection(playlistName);
+            event.getChannel().sendMessage("Playlist: " + playlistName +" has been created!").queue();
         }
-        return;
 }
 
     private void savePlaylist(String[] message, MessageReceivedEvent event) {
-        String jsonName = message[1];
+        String playListName = message[1];
         String url = "";
         for (int i = 2; i < message.length; i ++) {
             url += message[i];
@@ -253,45 +238,36 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                 url += " ";
             }
         }
+        if (url.isEmpty()) {
+            event.getChannel().sendMessage("source of audio is empty!").queue();
+            return;
+        }
         if (!isUrl(url))
             url = "ytsearch:" + url;
-        String formatter = "";
-        WriteJson writer = new WriteJson();
-        try {
-          List<String> playlist = writer.writeJson(jsonName,url,"link");
-            for (int i = 0; i < playlist.size(); i++) {
-                formatter += playlist.get(i) +"\n";
-            }
-            event.getChannel().sendMessage("Saved to playlist " + jsonName).queue();
-        } catch (IOException e) {
-            event.getChannel().sendMessage("JSON file does not exist").queue();
-        } catch (ParseException e) {
-            event.getChannel().sendMessage("Error in reading json file").queue();
-        }
+        MongoCollection col = db.getCollection(playListName);
+        Document obj = new Document("link",url);
+        col.insertOne(obj);
+        event.getChannel().sendMessage("Playlist: " + playListName + " has saved a song!").queue();
+
     }
 
     private void readPlaylist(String[] message, MessageReceivedEvent event) {
         int size = 0;
         String playlistName = getArg(message);
-        ReadJson reader = new ReadJson();
+
         String formatter = "";
+        int position = 1;
 
-        try {
-            List<String> playlist = reader.readJSONData(playlistName, "link");
-            size = playlist.size();
-            for (int i = 0; i < playlist.size(); i++) {
-                int position = i + 1;
-                formatter += position +". " + playlist.get(i) +"\n";
+        FindIterable<Document> iterable = db.getCollection(playlistName).find();
+        Iterator it = iterable.iterator();
+        while(it.hasNext()) {
+                Document doc = (Document) it.next();
+            formatter += position +". " + doc.get("link") +"\n";
+            position++;
             }
-
-
+        try {
             event.getChannel().sendMessage(formatter).queue();
-        } catch (IOException e) {
-            event.getChannel().sendMessage("Error in json file").queue();
-        } catch (ParseException e) {
-            event.getChannel().sendMessage("Error in reading json file").queue();
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             event.getChannel().sendMessage("There are " + size + " songs in the playlist").queue();
         }
     }
@@ -703,35 +679,28 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
         try {
             ResponseBody as = new Connector().request(url);
             String request = as.string(); //parse all the information into a string
-            String[] findID = request.split("[{}]"); //split each category for each of its own anime
-            String[] split = findID[2].split(","); //split each of its anime into different type
-            split = split[0].split(":"); //split type into values
-            if (split[1].isEmpty()) { //check to see if id is a real number
-                event.getChannel().sendMessage("There exist no anime with that name");
-            }
-            int id = Integer.parseInt(split[1]); //split [1] will always contain the id of the anime
+            Document doc = Document.parse(request);
+            MongoCollection col = dbAnime.getCollection("animeCollection");
+             ArrayList<Document> resultQuery = (ArrayList<Document>) doc.get("results");
+             Document firstSearched = resultQuery.get(0);
+             Object id = firstSearched.get("mal_id");
+            System.out.println(id);
            String dataAnimeParse = new Connector().request("https://api.jikan.moe/v3/anime/" + id).string();
+            doc = Document.parse(dataAnimeParse);
+            col = dbAnime.getCollection("animeCollection");
 
-              PrintWriter out = new PrintWriter("./src/data/anime.json");
-              out.println(dataAnimeParse);
-              out.close();
-            FileReader reader = new FileReader("./src/data/anime.json");
-            JSONParser jsonParser = new JSONParser();
-            Object obj =  jsonParser.parse(reader);
-            JSONObject jsonObject = (JSONObject) obj;
-            String title = getParse(jsonObject,"title");
-            String link = getParse(jsonObject,"url");
-            String imageURL = getParse(jsonObject,"image_url");
-            String episodes = getParse(jsonObject,"episodes");
-            String status = getParse(jsonObject,"status");
-            String type = getParse(jsonObject, "type");
-            String score = getParse(jsonObject,"score");
-            String duration = getParse(jsonObject,"duration");
-            JSONArray jsonArray = (JSONArray) jsonObject.get("producers");
-            JSONObject arrayObject = (JSONObject) jsonArray.get(0);
-            String producer = (String) arrayObject.get("name");
-            String synopsis = getParse(jsonObject,"synopsis");
-
+            String title = (String) doc.get("title");
+            String link = (String) doc.get("url");
+            String imageURL = (String) doc.get("image_url");
+            String episodes =  doc.get("episodes").toString();
+            String status = (String) doc.get("status");
+            String type = (String) doc.get("type");
+            String score =  doc.get("score").toString();
+            String duration = (String) doc.get("duration");
+            ArrayList<Document> producers = (ArrayList<Document>) doc.get("studios");
+            Document firstProducer = producers.get(0);
+            String producer = (String) firstProducer.get("name");
+            String synopsis = (String) doc.get("synopsis");
 
             MessageEmbed embed = new EmbedBuilder().setTitle(title, link)
                     .setDescription(synopsis)
@@ -751,7 +720,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
 
 
         } catch (Exception e) {
-            //
+           e.printStackTrace();
         }
     }
     private String getParse (JSONObject jsonObject,String key) {
