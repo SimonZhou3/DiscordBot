@@ -15,7 +15,9 @@ public class Main {
     public static void main (String args[]) throws Exception {
 
            // Activates discord Bot using secure dotenv to keep API key safe
+//            Dotenv dotenv = Dotenv.load();
             jda = JDABuilder.createDefault(System.getenv("MY_ENV_APIKEY"));
+//            jda = JDABuilder.createDefault(dotenv.get("MY_ENV_APIKEY"));
             jda.setActivity(Activity.streaming(" -help","https://www.twitch.tv/gumsf"));
             JDA bot;
             bot = jda.build();
