@@ -11,15 +11,12 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.managers.AudioManager;
 import okhttp3.ResponseBody;
 import org.bson.Document;
-import org.json.simple.JSONObject;
 
 import java.awt.*;
-import java.io.File;
 import java.net.URL;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -57,15 +54,16 @@ public class CommandMap  extends ListenerAdapter {
     private ArrayList<String> musicCommands = new ArrayList<>();
     private ArrayList<String> playlistCommands = new ArrayList<>();
     private List<String> page = new ArrayList<>();
-    private int totalPage;
-    private String messages;
-    
+
     private int pageNumber = 0;
     private static final String PREFIX = "-";
-    private static final int SIZEIMAGE = 22;
-    private MongoClient client = MongoClients.create(System.getenv("MONGO"));
+    private static final int SIZEIMAGE = 31;
+     private MongoClient client = MongoClients.create(System.getenv("MONGO2"));
+//    private MongoClient client = MongoClients.create(Dotenv.load().get("MONGO2"));
+
     private MongoDatabase db = client.getDatabase("playlist");
     private MongoDatabase dbAnime = client.getDatabase("anime");
+    private MongoDatabase dbHyoon = client.getDatabase("photos");
 
 
     //Creates a fixated bot.command list for the bot to use
@@ -147,13 +145,10 @@ public class CommandMap  extends ListenerAdapter {
                 now(event);
                 break;
             case PREFIX + "queue":
-                queueTemp(event);
+                queue(event);
                 break;
             case PREFIX + "seek":
                 seek(command, event);
-                break;
-            case PREFIX + "joe":
-                joe(event);
                 break;
             case PREFIX + "supremacy":
                 hyoon(event);
@@ -173,16 +168,10 @@ public class CommandMap  extends ListenerAdapter {
             case PREFIX + "playlist":
                 playPlaylist(command,event);
                 break;
-            case PREFIX + "describe":
-                describePlaylist(command,event);
-                break;
             default:
                 System.out.println("Enter default");
                 break;
         }
-    }
-
-    private void describePlaylist(String[] command, MessageReceivedEvent event) {
     }
 
     private void playPlaylist(String[] message, MessageReceivedEvent event) {
@@ -284,10 +273,18 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
 
 
     private void seek(String[] message, MessageReceivedEvent event) {
+        if (!event.getMember().getVoiceState().getChannel().equals(event.getGuild().getSelfMember().getVoiceState().getChannel())) {
+            event.getChannel().sendMessage("Must be in the same voice channel!");
+            return;
+        }
         long totalTime;
         if (message.length == 1 ) {
             event.getChannel().sendMessage("Please include a time to seek to").queue();
             return;
+        }
+        TrackScheduler ts = PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler;
+        if (ts.currentTrack() == null) {
+            event.getChannel().sendMessage("No song is currently playing").queue();
         }
         String time = message[1];
         if (time.contains(":")) {
@@ -311,10 +308,6 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                 return;
             }
         }
-        TrackScheduler ts = PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler;
-        if (ts.currentTrack() == null) {
-            event.getChannel().sendMessage("No song is currently playing").queue();
-        }
         ts.currentTrack().setPosition(totalTime);
         event.getChannel().sendMessage("Seeking... <a:guraone:812015049979199549>").queue();
     }
@@ -322,72 +315,25 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
     private void hyoon(MessageReceivedEvent event) {
         Random random = new Random();
         int randomInd = random.nextInt(SIZEIMAGE);
-        System.out.println(randomInd);
-        String path = "./src/data/Hyoon"+ String.valueOf(randomInd)+".png";
-        File file = new File(path);
-        event.getChannel().sendFile(file).queue();
-    }
-
-    private void joe(MessageReceivedEvent event) {
-        event.getChannel().sendMessage("mama").queue();
-    }
-
-
-    private void queueTemp(MessageReceivedEvent event) {
-        TrackScheduler ts = PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler;
-        List<AudioTrack> currentQueue = ts.currentQueue();
-        List<String> list = new ArrayList<>();
-        MessageEmbed messageEmbed;
-
-        if (currentQueue.size() == 0) {
-            messageEmbed = new EmbedBuilder()
-                    .setDescription("No Songs in the queue")
-                    .build();
-            event.getChannel().sendMessage(messageEmbed).queue();
-            return;
-        } else {
-            String compileList = "";
-            int position = 1;
-
-            for (AudioTrack at : currentQueue) {
-                String titleFormat = String.valueOf(position) + ". " + at.getInfo().title + "\n";
-                if ((compileList.length() + titleFormat.length() < 2000)) {
-                    compileList += titleFormat;
-                    position++;
-                } else {
-                    System.out.println(compileList);
-                    list.add(compileList);
-                    compileList = titleFormat;
-                }
+        String path = "hyoon" + String.valueOf(randomInd);
+        for (Document hyoon : dbHyoon.getCollection("hyoon").find()) {
+            if (hyoon.containsKey(path)) {
+                event.getChannel().sendMessage((String) hyoon.get(path)).queue();
             }
-            if (list.isEmpty()) {
-                list.add(compileList);
-            }
-            messageEmbed = new EmbedBuilder()
-                    .setTitle("  ``` List of Songs  ```")
-                    .setDescription("```" + list.get(0) + "```")
-                    .setColor(new Color(4818551))
-                    .setTimestamp(OffsetDateTime.now())
-                    .setFooter("Youtube Analytics", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
-                    .build();
-            event.getChannel().sendMessage(messageEmbed).queue();
         }
     }
 
-
-    //Prints the  queue of songs
     private void queue(MessageReceivedEvent event) {
         TrackScheduler ts = PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler;
         List<AudioTrack> currentQueue = ts.currentQueue();
         List<String> list = new ArrayList<>();
         MessageEmbed messageEmbed;
-        pageNumber = 0;
+
         if (currentQueue.size() == 0) {
             messageEmbed = new EmbedBuilder()
                     .setDescription("No Songs in the queue")
                     .build();
             event.getChannel().sendMessage(messageEmbed).queue();
-            return;
         } else {
             String compileList = "";
             int position = 1;
@@ -398,7 +344,6 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                     compileList += titleFormat;
                     position++;
                 } else {
-                    System.out.println(compileList);
                     list.add(compileList);
                     compileList = titleFormat;
                 }
@@ -406,8 +351,6 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
             if (list.isEmpty()) {
                 list.add(compileList);
             }
-
-            System.out.println("After completing the page book the size of the book is : " + this.page.size());
             messageEmbed = new EmbedBuilder()
                     .setTitle("  ``` List of Songs  ```")
                     .setDescription("```" + list.get(0) + "```")
@@ -415,89 +358,9 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                     .setTimestamp(OffsetDateTime.now())
                     .setFooter("Youtube Analytics", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
                     .build();
-            event.getChannel().sendMessage(messageEmbed).queue(message -> {
-                messages = message.getId();
-                message.addReaction("➡").submit();
-
-            });
-
-            }
-}
-
-
-
-
-    public void onMessageReactionAdd(MessageReactionAddEvent event) {
-        if (!event.getUser().isBot()) {
-            addHelper(event);
+            event.getChannel().sendMessage(messageEmbed).queue();
         }
-}
-
-    private void addHelper(MessageReactionAddEvent event) {
-
-        if (event.getReactionEmote().getName().equals("➡") ) {
-            System.out.println("we should enter here when we clicked it...");
-            this.pageNumber++;
-        }
-        else if (event.getReactionEmote().getName().equals("⬅"))
-            this.pageNumber--;
-
-        event.getChannel().retrieveMessageById(event.getMessageId()).queue(message -> {
-            for (MessageReaction r: message.getReactions()) {
-                r.removeReaction(event.getUser()).submit();
-                r.removeReaction().submit();
-            }
-        });
-
-        TrackScheduler ts = PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler;
-        List<AudioTrack> currentQueue = ts.currentQueue();
-        String compileList = "";
-        int position = 1;
-        List<String> list = new ArrayList<>();
-
-        for (AudioTrack at : currentQueue) {
-            String titleFormat = String.valueOf(position) + ". " + at.getInfo().title + "\n";
-            if ((compileList.length() + titleFormat.length() < 2000)) {
-                compileList += titleFormat;
-                position++;
-            } else {
-                System.out.println(compileList);
-                list.add(compileList);
-                compileList = titleFormat;
-            }
-        }
-        event.getChannel().retrieveMessageById(event.getMessageId()).queue(message -> {
-            if (pageNumber == 0) {
-                message.addReaction("➡").queue();
-            }
-            else if (pageNumber > 0 && pageNumber < list.size() - 1 ) {
-                message.addReaction("⬅").queue();
-                message.addReaction("➡").queue();
-            } else {
-                message.addReaction("⬅").queue();
-            }
-            System.out.println("size of list: " + list.size());
-
-            if (list.isEmpty()) {
-                MessageEmbed messageEmbed = new EmbedBuilder()
-                        .setDescription("No Songs in the queue")
-                        .build();
-                message. editMessage(messageEmbed).queue();
-                return;
-            }
-            MessageEmbed messageEmbed = new EmbedBuilder()
-                    .setTitle("  ``` List of Songs  ```")
-                    .setDescription("```" + list.get(pageNumber) + "```")
-                    .setColor(new Color(4818551))
-                    .setTimestamp(OffsetDateTime.now())
-                    .setFooter("Youtube Analytics", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
-                    .build();
-            message.editMessage(messageEmbed).queue();
-        });
     }
-
-
-
 
     //prints currently playing song
     private void now(MessageReceivedEvent event) {
@@ -533,7 +396,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                  .setTimestamp(OffsetDateTime.now())
                  .setFooter("Youtube Analytics", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
                  .build();
-         event.getChannel().sendMessage(messageEmbed).queue();
+        event.getChannel().sendMessage(messageEmbed).queue();
          }
 
 
@@ -556,24 +419,28 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
     }
 
     //Makes bot leave and clear the queue
-    private void leave (MessageReceivedEvent event) {
+    public void leave (MessageReceivedEvent event) {
         if (!event.getMember().getVoiceState().getChannel().equals(event.getGuild().getSelfMember().getVoiceState().getChannel())) {
-            event.getChannel().sendMessage("Must be in the same voice channel!");
+            event.getChannel().sendMessage("Must be in the same voice channel!").queue();
             return;
         }
-        PlayerManager.getInstance()
+        TrackScheduler ts = PlayerManager.getInstance()
                 .getMusicManager(event.getGuild())
-                .trackScheduler.clearQueue();
-        PlayerManager.getInstance()
-                .getMusicManager(event.getGuild())
-                .trackScheduler.setRepeat(false);
-        PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler.setCurrentlyPlaying();
+                .trackScheduler;
+        ts.clearQueue();
+        ts.setRepeat(false);
+        ts.setCurrentlyPlaying();
+        ts.nextTrack();
         AudioManager audioManager = event.getGuild().getAudioManager();
         audioManager.closeAudioConnection();
     }
 
     //Repeat the currently playing song
     private void repeat (MessageReceivedEvent event) {
+        if (!event.getMember().getVoiceState().getChannel().equals(event.getGuild().getSelfMember().getVoiceState().getChannel())) {
+            event.getChannel().sendMessage("Must be in the same voice channel!").queue();
+            return;
+        }
         PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler.setRepeat();
        Boolean repeatStat = PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler.getRepeat();
        if (repeatStat)
@@ -585,6 +452,10 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
 
     //Skip the current song and play the next song
     private void skip (MessageReceivedEvent event) {
+        if (!event.getMember().getVoiceState().getChannel().equals(event.getGuild().getSelfMember().getVoiceState().getChannel())) {
+            event.getChannel().sendMessage("Must be in the same voice channel!").queue();
+            return;
+        }
         TrackScheduler ts = PlayerManager.getInstance()
                 .getMusicManager(event.getGuild())
                 .trackScheduler;
@@ -621,6 +492,10 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
     // If it is a keyword, use API to create a youtube search and call handle, else call handle
 
     private void play (String[] message, MessageReceivedEvent event) {
+        if (event.getGuild().getSelfMember().getVoiceState().getChannel() != null && !event.getMember().getVoiceState().getChannel().equals(event.getGuild().getSelfMember().getVoiceState().getChannel())) {
+            event.getChannel().sendMessage("Must be in the same voice channel!").queue();
+            return;
+        }
         TextChannel channel = event.getTextChannel();
         Member self = event.getGuild().getSelfMember();
         Member user = event.getMember();
@@ -722,9 +597,6 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
            e.printStackTrace();
         }
     }
-    private String getParse (JSONObject jsonObject,String key) {
-        return jsonObject.get(key).toString();
-    }
 
     //Search manga by ID, Not sure if this function is useful, Could be improved, but will keep it as is for now.
     private void manga (String[] message,MessageReceivedEvent event) {
@@ -746,7 +618,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                     .addField("Airing", manga.component10(), false)
                     .addField("Producer", manga.component27().get(0).component3(), true)
                     .build();
-            event.getChannel().sendMessage(embed).queue();
+            event.getChannel().sendMessage((Message) embed).queue();
 
         } catch (Exception e) {
             //
@@ -802,7 +674,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                     .addField("Producer", anime.getProducers().get(0).component3(), true)
                     .addField("Rating",  Double.toString(anime.getScore()) + " ⭐",true)
                     .build();
-            event.getChannel().sendMessage(embed).queue();
+            event.getChannel().sendMessage((Message) embed).queue();
 
         } catch (Exception e) {
 
@@ -840,7 +712,7 @@ private void createPlaylist(String[] message, MessageReceivedEvent event) {
                     .addField("Producer", anime.getProducers().get(0).component3(), true)
                     .build();
 
-            event.getChannel().sendMessage(embed).queue();
+            event.getChannel().sendMessage((Message) embed).queue();
 
             } catch (Exception e) {
         }
