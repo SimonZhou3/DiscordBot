@@ -22,39 +22,39 @@
             <plugin>
                 <groupId>com.heroku.sdk</groupId>
                 <artifactId>heroku-maven-plugin</artifactId>
-                <version>3.0.3</version>
+                <version>3.0.4</version>
                 <configuration>
                     <appName>ikuradiscord</appName>
                 </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-war-plugin</artifactId>
+                <version>2.4</version>
                 <configuration>
-                    <attachClasses>true</attachClasses>
-                    <webXml>pom.xml</webXml>
-                    <webResources>
-                        <resource>
-                            <directory>src/main/java</directory>
-                            <filtering>true</filtering>
-                        </resource>
-                    </webResources>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.4</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals><goal>copy-dependencies</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
 
     <dependencies>
-
     <dependency>
         <groupId>net.dv8tion</groupId>
         <artifactId>JDA</artifactId>
         <version>4.2.1_262</version>
     </dependency>
-        <dependency>
-            <groupId>com.github.Doomsdayrs</groupId>
-            <artifactId>Jikan4java</artifactId>
-            <version>2.0.0</version>
-        </dependency>
         <dependency>
             <groupId>com.sedmelluq</groupId>
             <artifactId>lavaplayer</artifactId>
@@ -85,22 +85,15 @@
             <version>2.1.0</version>
         </dependency>
 </dependencies>
-
     <repositories>
-
         <repository>
             <id>dv8tion</id>
             <name>m2-dv8tion</name>
             <url>https://m2.dv8tion.net/releases</url>
         </repository>
-
             <repository>
                 <id>jitpack.io</id>
                 <url>https://jitpack.io</url>
             </repository>
-
-
     </repositories>
-
-
 </project>
