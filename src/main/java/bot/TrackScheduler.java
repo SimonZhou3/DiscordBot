@@ -71,7 +71,7 @@ public class TrackScheduler extends AudioEventAdapter {
     }
 
     public void setRepeat() {
-        if (repeat == false)
+        if (!repeat)
             repeat = true;
         else
             repeat = false;

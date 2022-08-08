@@ -50,13 +50,11 @@
         <artifactId>JDA</artifactId>
         <version>4.2.1_262</version>
     </dependency>
-
         <dependency>
             <groupId>com.github.Doomsdayrs</groupId>
             <artifactId>Jikan4java</artifactId>
             <version>2.0.0</version>
         </dependency>
-
         <dependency>
             <groupId>com.sedmelluq</groupId>
             <artifactId>lavaplayer</artifactId>
@@ -75,11 +73,17 @@
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-sync</artifactId>
-            <version>4.0.5</version>
+            <version>4.7.0</version>
         </dependency>
-
-
-
+        <dependency>
+            <groupId>org.javers</groupId> <artifactId>javers-core</artifactId>
+            <version>5.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sandrohc</groupId>
+            <artifactId>reactive-jikan</artifactId>
+            <version>2.1.0</version>
+        </dependency>
 </dependencies>
 
     <repositories>
