@@ -4,18 +4,30 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.bson.json.JsonObject;
 
+import java.awt.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PlaylistCommands extends MusicCommands {
 
@@ -42,22 +54,58 @@ public class PlaylistCommands extends MusicCommands {
         return arg.toString();
     }
 
+    public void listAllPlaylist(MessageReceivedEvent event) {
+        String personalPlaylist = "";
+        String publicPlaylist = "";
+       MongoIterable<String> allCollections = db.listCollectionNames();
+        for (String s : allCollections) {
+          MongoCollection<Document> collection = db.getCollection(s);
+            System.out.println(s);
+            Bson filter = Filters.empty();
+            Bson projection = Projections.fields(Projections.include("isPrivate", "userID"), Projections.excludeId());
+            Document isPrivate = collection.find(filter).projection(projection).first();
+            if (isPrivate != null) {
+                if (isPrivate.isEmpty()) {
+                    publicPlaylist += "- " + s + "\n";
+                } else if (isPrivate.get("userID").equals(event.getAuthor().getId())) {
+                    personalPlaylist += "- " + s + "\n";
+                }
+            }
+        }
+        MessageEmbed messageEmbed = new EmbedBuilder().setTitle("All Playlists")
+                .setColor(new Color(13231366))
+                .setTimestamp(OffsetDateTime.now())
+                .setFooter("MAL Rewrite", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
+                .addField("Public Playlist", publicPlaylist,false)
+                .addField("Personal Playlist", personalPlaylist,false)
+                .build();
+
+        event.getChannel().sendMessage(messageEmbed).queue();
+    }
+
     public void removePlaylist(String[] message, MessageReceivedEvent event) {
         String playlistName = message[1];
         int position = Integer.parseInt(message[2]);
-        FindIterable<Document> iterable = db.getCollection(playlistName).find();
-        Iterator<Document> it = iterable.iterator();
-        int i = 1;
-        while (it.hasNext()) {
-            Document doc = (Document) it.next();
-            if (i == position) {
-                Bson filter = Filters.eq("_id", doc.get("_id"));
-                String link = (String) doc.get("link");
-                db.getCollection(playlistName).findOneAndDelete(filter);
-                event.getChannel().sendMessage("Successfully deleted: " + link).queue();
-                break;
+        MongoCollection<Document> collection = db.getCollection(playlistName);
+        if (havePermissionToPlaylist(collection, event)) {
+            FindIterable<Document> iterable = collection.find();
+            Iterator<Document> it = iterable.iterator();
+            int i = 1;
+            while (it.hasNext()) {
+                Document doc = (Document) it.next();
+                if (!doc.containsKey("userID") && !doc.containsKey("isPrivate")) {
+                    if (i == position) {
+                        Bson filter = Filters.eq("_id", doc.get("_id"));
+                        String link = (String) doc.get("link");
+                        db.getCollection(playlistName).findOneAndDelete(filter);
+                        event.getChannel().sendMessage("Successfully deleted: " + link).queue();
+                        break;
+                    }
+                    i++;
+                }
             }
-            i++;
+        } else {
+            event.getChannel().sendMessage("You do not have permission for this playlist").queue();
         }
     }
 
@@ -65,9 +113,11 @@ public class PlaylistCommands extends MusicCommands {
         String oldPlaylistName = message[1];
         String newPlaylistName = message[2];
         MongoCollection<Document> collection = db.getCollection(oldPlaylistName);
-        MongoNamespace newName = new MongoNamespace("playlist", newPlaylistName);
-        collection.renameCollection(newName);
-        event.getChannel().sendMessage("Renamed " + oldPlaylistName + " to " + newPlaylistName).queue();
+        if (havePermissionToPlaylist(collection, event)) {
+            MongoNamespace newName = new MongoNamespace("playlist", newPlaylistName);
+            collection.renameCollection(newName);
+            event.getChannel().sendMessage("Renamed " + oldPlaylistName + " to " + newPlaylistName).queue();
+        }
     }
 
     public void playPlaylist(String[] message, MessageReceivedEvent event) {
@@ -77,29 +127,47 @@ public class PlaylistCommands extends MusicCommands {
         Member user = event.getMember();
         String link = "";
         List<String> playlist = new ArrayList<>();
-        FindIterable<Document> iterable = db.getCollection(playlistName).find();
-        for (Document doc : iterable) {
-            link = (String) doc.get("link");
-            if (isUrl(link)) {
-                playlist.add(link);
+        MongoCollection<Document> collection = db.getCollection(playlistName);
+        if (havePermissionToPlaylist(collection, event)) {
+            FindIterable<Document> iterable = collection.find();
+            for (Document doc : iterable) {
+                link = (String) doc.get("link");
+                if (isUrl(link)) {
+                    playlist.add(link);
+                }
             }
-        }
-        Collections.shuffle(playlist);
-        for (String s : playlist) {
-            handle(channel, self, user, s, event);
+            Collections.shuffle(playlist);
+            for (String s : playlist) {
+                handle(channel, self, user, s, event);
+            }
+        } else {
+            event.getChannel().sendMessage("You do not have permission for this playlist").queue();
         }
     }
 
     //MODIFIES: this
     //EFFECT: Creates a JSON file with the name of the playlist, bot.Playlist name must be one word.
     public void createPlaylist(String[] message, MessageReceivedEvent event) {
-        if (message.length != 2) {
-            event.getChannel().sendMessage("Playlist name must be one word only!").queue();
-        } else {
-            String playlistName = message[1];
-            db.getCollection(playlistName);
-            event.getChannel().sendMessage("Playlist: " + playlistName + " has been created!").queue();
+        if (message.length < 3) {
+            event.getChannel().sendMessage("Invalid usage -- [name][public/private]").queue();
+            return;
         }
+        String playlistName = message[1];
+        String status = message[2];
+        if (!status.equals("public") && !status.equals("private")) {
+            event.getChannel().sendMessage("Please Specify whether the playlist is public or private").queue();
+            return;
+        }
+        db.getCollection(playlistName);
+        if (status.equals("private")) {
+            String userID = event.getAuthor().getId();
+            Document obj = new Document("isPrivate", true);
+            obj.append("userID", userID);
+            MongoCollection<Document> col = db.getCollection(playlistName);
+            col.insertOne(obj);
+        }
+        event.getChannel().sendMessage("Playlist: " + playlistName + " has been created!").queue();
+
     }
 
     public void savePlaylist(String[] message, MessageReceivedEvent event) {
@@ -119,51 +187,87 @@ public class PlaylistCommands extends MusicCommands {
             event.getChannel().sendMessage("Must be a link!").queue();
             return;
         }
+        if (!db.listCollectionNames().into(new ArrayList<String>()).contains(playListName)) {
+            event.getChannel().sendMessage("` " + playListName + " has not been created yet`").queue();
+            return;
+        }
         MongoCollection<Document> col = db.getCollection(playListName);
-        Document obj = new Document("link", url.toString());
-        col.insertOne(obj);
-        event.getChannel().sendMessage("Playlist: " + playListName + " has saved a song!").queue();
+        if (havePermissionToPlaylist(col, event)) {
+            Document obj = new Document("link", url.toString());
+            col.insertOne(obj);
+            event.getChannel().sendMessage("`Playlist: " + playListName + " has saved a song!`").queue();
+        } else {
+            event.getChannel().sendMessage("You do not have permission for this playlist").queue();
+        }
+    }
 
+    private boolean havePermissionToPlaylist(MongoCollection<Document> collection, MessageReceivedEvent event) {
+        Bson filter = Filters.empty();
+        Bson projection = Projections.fields(Projections.include("isPrivate", "userID"), Projections.excludeId());
+        Document isPrivate = collection.find(filter).projection(projection).first();
+        if (isPrivate.isEmpty() || (isPrivate.get("userID").equals(event.getAuthor().getId()))) {
+            return true;
+        } else if (!isPrivate.get("userID").equals(event.getAuthor().getId())) {
+            return false;
+        }
+        return false;
+    }
+
+    private String getYouTubeId(String youTubeUrl) {
+        String pattern = "(?<=youtu.be/|watch\\?v=|/videos/|embed\\/)[^#\\&\\?]*";
+        Pattern compiledPattern = Pattern.compile(pattern);
+        Matcher matcher = compiledPattern.matcher(youTubeUrl);
+        if (matcher.find()) {
+            return matcher.group();
+        } else {
+            return "error";
+        }
     }
 
     public void readPlaylist(String[] message, MessageReceivedEvent event) {
         int size = 0;
         String playlistName = getArg(message);
 
-        StringBuilder formatter = new StringBuilder();
+        StringBuilder formatter = new StringBuilder("`");
         int position = 1;
+        MongoCollection<Document> collection = db.getCollection(playlistName);
+        if (havePermissionToPlaylist(collection, event)) {
+            FindIterable<Document> iterable = collection.find();
+            Iterator it = iterable.iterator();
+            while (it.hasNext()) {
+                Document doc = (Document) it.next();
+                if (!doc.containsKey("userID") && !doc.containsKey("isPrivate")) {
+                    String link = getYouTubeId((String) doc.get("link"));
+                    try {
+//                        URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id="+link+"&key="+Dotenv.load().get("YOUTUBE_APIKEY"));
+                        URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id="+link+"&key="+System.getenv("YOUTUBE_APIKEY"));
+                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                        connection.setRequestMethod("GET");
+                        connection.setConnectTimeout(5000);
+                        connection.setReadTimeout(5000);
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream()));
+                        String inputLine;
+                        StringBuffer content = new StringBuffer();
+                        while ((inputLine = in.readLine()) != null) {
+                            content.append(inputLine);
+                        }
+                        JsonObject response = new JsonObject(content.toString());
+                        formatter.append(position).append(". ").append(response.toBsonDocument().get("items").asArray().get(0).asDocument().get("snippet").asDocument().get("title").asString().getValue()).append("\n");
+                        connection.disconnect();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                    position++;
+                }
+            }
+            try {
+                formatter.append("`");
+                event.getChannel().sendMessage(formatter.toString()).queue();
+            } catch (IllegalArgumentException e) {
+                event.getChannel().sendMessage("There are " + size + " songs in the playlist").queue();
+            }
 
-        FindIterable<Document> iterable = db.getCollection(playlistName).find();
-        Iterator it = iterable.iterator();
-        while (it.hasNext()) {
-            Document doc = (Document) it.next();
-            String link = (String) doc.get("link");
-//                try {
-//                    URL rest = new URL(link);
-//                    HttpURLConnection hr = (HttpURLConnection) rest.openConnection();
-//                    if (hr.getResponseCode() == 200) {
-//                        InputStream im = hr.getInputStream();
-//                        StringBuffer sb = new StringBuffer();
-//                        BufferedReader br = new BufferedReader(new InputStreamReader(im));
-//                        String line = br.readLine();
-//                        StringBuilder contentBuilder = new StringBuilder();
-//                        while (line != null) {
-//                            contentBuilder.append(line);
-//                            line = br.readLine();
-//                        }
-//                        Document doc = Jsoup.parse(html);
-//                        System.out.println(contentBuilder);
-//                    }
-//                } catch (Exception e) {
-//                    event.getChannel().sendMessage(e.getMessage()).queue();
-//                }
-            formatter.append(position).append(". ").append(doc.get("link")).append("\n");
-            position++;
-        }
-        try {
-            event.getChannel().sendMessage(formatter.toString()).queue();
-        } catch (IllegalArgumentException e) {
-            event.getChannel().sendMessage("There are " + size + " songs in the playlist").queue();
         }
     }
-}
