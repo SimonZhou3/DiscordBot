@@ -15,6 +15,14 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonObject;
+import se.michaelthelin.spotify.SpotifyApi;
+import se.michaelthelin.spotify.SpotifyHttpManager;
+import se.michaelthelin.spotify.exceptions.detailed.NotFoundException;
+import se.michaelthelin.spotify.model_objects.credentials.ClientCredentials;
+import se.michaelthelin.spotify.model_objects.specification.Paging;
+import se.michaelthelin.spotify.model_objects.specification.PlaylistTrack;
+import se.michaelthelin.spotify.model_objects.specification.Track;
+import se.michaelthelin.spotify.requests.authorization.client_credentials.ClientCredentialsRequest;
 
 import java.awt.*;
 import java.io.BufferedReader;
@@ -57,9 +65,9 @@ public class PlaylistCommands extends MusicCommands {
     public void listAllPlaylist(MessageReceivedEvent event) {
         String personalPlaylist = "";
         String publicPlaylist = "";
-       MongoIterable<String> allCollections = db.listCollectionNames();
+        MongoIterable<String> allCollections = db.listCollectionNames();
         for (String s : allCollections) {
-          MongoCollection<Document> collection = db.getCollection(s);
+            MongoCollection<Document> collection = db.getCollection(s);
             System.out.println(s);
             Bson filter = Filters.empty();
             Bson projection = Projections.fields(Projections.include("isPrivate", "userID"), Projections.excludeId());
@@ -76,8 +84,8 @@ public class PlaylistCommands extends MusicCommands {
                 .setColor(new Color(13231366))
                 .setTimestamp(OffsetDateTime.now())
                 .setFooter("MAL Rewrite", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
-                .addField("Public Playlist", publicPlaylist,false)
-                .addField("Personal Playlist", personalPlaylist,false)
+                .addField("Public Playlist", publicPlaylist, false)
+                .addField("Personal Playlist", personalPlaylist, false)
                 .build();
 
         event.getChannel().sendMessage(messageEmbed).queue();
@@ -232,6 +240,9 @@ public class PlaylistCommands extends MusicCommands {
         int position = 1;
         MongoCollection<Document> collection = db.getCollection(playlistName);
         if (havePermissionToPlaylist(collection, event)) {
+            if (collection.countDocuments() <= 0) {
+                event.getChannel().sendMessage("```No songs are in this playlist```").queue();
+            }
             FindIterable<Document> iterable = collection.find();
             Iterator it = iterable.iterator();
             while (it.hasNext()) {
@@ -240,7 +251,7 @@ public class PlaylistCommands extends MusicCommands {
                     String link = getYouTubeId((String) doc.get("link"));
                     try {
 //                        URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id="+link+"&key="+Dotenv.load().get("YOUTUBE_APIKEY"));
-                        URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id="+link+"&key="+System.getenv("YOUTUBE_APIKEY"));
+                        URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id=" + link + "&key=" + System.getenv("YOUTUBE_APIKEY"));
                         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                         connection.setRequestMethod("GET");
                         connection.setConnectTimeout(5000);
@@ -258,16 +269,58 @@ public class PlaylistCommands extends MusicCommands {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                }
                     position++;
                 }
             }
+
             try {
                 formatter.append("`");
                 event.getChannel().sendMessage(formatter.toString()).queue();
             } catch (IllegalArgumentException e) {
                 event.getChannel().sendMessage("There are " + size + " songs in the playlist").queue();
             }
-
+        } else {
+            event.getChannel().sendMessage("You do not have permission for this playlist").queue();
         }
     }
+
+    public void convertSpotifyPlaylistToYoutubePlaylist(String[] message, MessageReceivedEvent event) {
+        String regex = "(?<=https:\\/\\/open.spotify.com\\/playlist\\/)[^?]*";
+        Pattern compiledPattern = Pattern.compile(regex);
+        Matcher matcher = compiledPattern.matcher(message[1]);
+        String spotifyURL;
+        if (matcher.find()) {
+            spotifyURL = matcher.group();
+        } else {
+            event.getChannel().sendMessage("Invalid Link!").queue();
+            return;
+        }
+
+        SpotifyApi spotifyApi = new SpotifyApi.Builder()
+                .setClientId(System.getenv("SPOTIFY_CLIENTID"))
+                .setClientSecret(System.getenv("SPOTIFY_SECRETID"))
+                .setRedirectUri(SpotifyHttpManager.makeUri("https://discord.com/"))
+                .build();
+        ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials()
+                .build();
+        try {
+            ClientCredentials clientCredentials = clientCredentialsRequest.execute();
+            spotifyApi.setAccessToken(clientCredentials.getAccessToken());
+            Paging<PlaylistTrack> getPlaylistsItemsRequest = spotifyApi.getPlaylistsItems(spotifyURL).build().execute();
+            TextChannel channel = event.getTextChannel();
+            Member self = event.getGuild().getSelfMember();
+            Member user = event.getMember();
+            for (int i = 0; i < getPlaylistsItemsRequest.getItems().length; i++) {
+                String query = "ytsearch:" + getPlaylistsItemsRequest.getItems()[i].getTrack().getName() + " " + ((Track) getPlaylistsItemsRequest.getItems()[i].getTrack()).getArtists()[0].getName();
+                handle(channel, self, user, query, event);
+            }
+        } catch (NotFoundException e) {
+            event.getChannel().sendMessage("Invalid Playlist Link or playlist is private!").queue();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+}

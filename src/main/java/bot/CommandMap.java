@@ -19,8 +19,6 @@ enum command {
     PFP,
     DEL,
     ERESHKIGAL,
-    FUTURE,
-    ANI,
     SEARCH,
     JOIN,
     PLAY,
@@ -37,7 +35,8 @@ enum command {
     SAVE,
     RENAME,
     REMOVE,
-    LIST
+    LIST,
+    SPOTIFY
 }
 
 public class CommandMap extends ListenerAdapter {
@@ -83,6 +82,7 @@ public class CommandMap extends ListenerAdapter {
         playlistCommands.add(String.valueOf(PREFIX + command.RENAME).toLowerCase() + "[old playlist] [new playlist] -- Renames an old playlist to a new playlist");
         playlistCommands.add(String.valueOf(PREFIX + command.REMOVE).toLowerCase() + "[playlist] [position] -- Removes a particular audio source from the playlist");
         playlistCommands.add(String.valueOf(PREFIX + command.LIST).toLowerCase() + "-- Lists all publicly owned and personal playlists");
+        playlistCommands.add(String.valueOf(PREFIX + command.SPOTIFY).toLowerCase() + "[link] -- Takes in a public spotify playlist link and converts it to a youtube playlist");
 
     }
 
@@ -164,6 +164,9 @@ public class CommandMap extends ListenerAdapter {
                 break;
             case PREFIX + "list":
                 playlistHandler.listAllPlaylist(event);
+                break;
+            case PREFIX + "spotify":
+                playlistHandler.convertSpotifyPlaylistToYoutubePlaylist(command,event);
                 break;
             default:
                 System.out.println("Enter default");
@@ -264,8 +267,5 @@ public class CommandMap extends ListenerAdapter {
             }
         }
     }
-
-
 }
-
 

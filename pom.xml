@@ -15,8 +15,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <source>8</source>
-                    <target>8</target>
+                    <target>11</target>
+                    <release>11</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -29,7 +29,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-war-plugin</artifactId>
-                <version>2.4</version>
+                <version>3.3.1</version>
                 <configuration>
                     <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
@@ -99,7 +99,13 @@
             <artifactId>gson</artifactId>
             <version>2.9.1</version>
         </dependency>
+        <dependency>
+            <groupId>se.michaelthelin.spotify</groupId>
+            <artifactId>spotify-web-api-java</artifactId>
+            <version>7.1.0</version>
+        </dependency>
     </dependencies>
+
     <repositories>
         <repository>
             <id>dv8tion</id>
