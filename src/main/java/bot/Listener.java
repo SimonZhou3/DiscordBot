@@ -10,6 +10,7 @@ public class Listener extends ListenerAdapter {
 
         public void onMessageReceived (MessageReceivedEvent event) {
             String[] messageReceived = event.getMessage().getContentRaw().split(" ");
+            System.out.print(event.getGuild().getName() + ": " + event.getAuthor().getName() + " -- " );
             for (String s : messageReceived) {
                 System.out.print(s + " "); //prints out the message
             }
@@ -20,7 +21,6 @@ public class Listener extends ListenerAdapter {
                    System.out.println("User: " + user.getEffectiveName());
                } catch (Exception e) {
                }
-
                commands.get(messageReceived, event);
             }
         }

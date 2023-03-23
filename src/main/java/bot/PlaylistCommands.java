@@ -1,5 +1,6 @@
 package bot;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -10,7 +11,7 @@ import com.mongodb.client.model.Projections;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -88,7 +89,7 @@ public class PlaylistCommands extends MusicCommands {
                 .addField("Personal Playlist", personalPlaylist, false)
                 .build();
 
-        event.getChannel().sendMessage(messageEmbed).queue();
+        event.getChannel().sendMessageEmbeds(messageEmbed).queue();
     }
 
     public void removePlaylist(String[] message, MessageReceivedEvent event) {
@@ -118,25 +119,38 @@ public class PlaylistCommands extends MusicCommands {
     }
 
     public void renamePlaylist(String[] message, MessageReceivedEvent event) {
+        if (message.length < 1) {
+            event.getChannel().sendMessage("``` Missing arguments! ```").queue();
+            return;
+        }
         String oldPlaylistName = message[1];
         String newPlaylistName = message[2];
         MongoCollection<Document> collection = db.getCollection(oldPlaylistName);
         if (havePermissionToPlaylist(collection, event)) {
             MongoNamespace newName = new MongoNamespace("playlist", newPlaylistName);
-            collection.renameCollection(newName);
-            event.getChannel().sendMessage("Renamed " + oldPlaylistName + " to " + newPlaylistName).queue();
+            try {
+                collection.renameCollection(newName);
+                event.getChannel().sendMessage("Renamed " + oldPlaylistName + " to " + newPlaylistName).queue();
+            } catch (MongoCommandException e) {
+                if (e.getErrorCode() == 48) {
+                    event.getChannel().sendMessage("A playlist named " + newPlaylistName + " already exists").queue();
+                }
+
+            }
         }
     }
 
     public void playPlaylist(String[] message, MessageReceivedEvent event) {
         String playlistName = getArg(message);
-        TextChannel channel = event.getTextChannel();
+        TextChannel channel = event.getChannel().asTextChannel();
         Member self = event.getGuild().getSelfMember();
         Member user = event.getMember();
         String link = "";
         List<String> playlist = new ArrayList<>();
         MongoCollection<Document> collection = db.getCollection(playlistName);
-        if (havePermissionToPlaylist(collection, event)) {
+        if (!havePermissionToPlaylist(collection, event)) {
+            event.getChannel().sendMessage("You do not have permission for this playlist").queue();
+        } else {
             FindIterable<Document> iterable = collection.find();
             for (Document doc : iterable) {
                 link = (String) doc.get("link");
@@ -148,9 +162,8 @@ public class PlaylistCommands extends MusicCommands {
             for (String s : playlist) {
                 handle(channel, self, user, s, event);
             }
-        } else {
-            event.getChannel().sendMessage("You do not have permission for this playlist").queue();
         }
+
     }
 
     //MODIFIES: this
@@ -307,7 +320,7 @@ public class PlaylistCommands extends MusicCommands {
             ClientCredentials clientCredentials = clientCredentialsRequest.execute();
             spotifyApi.setAccessToken(clientCredentials.getAccessToken());
             Paging<PlaylistTrack> getPlaylistsItemsRequest = spotifyApi.getPlaylistsItems(spotifyURL).build().execute();
-            TextChannel channel = event.getTextChannel();
+            TextChannel channel = event.getChannel().asTextChannel();
             Member self = event.getGuild().getSelfMember();
             Member user = event.getMember();
             for (int i = 0; i < getPlaylistsItemsRequest.getItems().length; i++) {

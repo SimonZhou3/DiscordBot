@@ -2,7 +2,11 @@ package bot;
 
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.GuildVoiceState;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
@@ -17,6 +21,13 @@ public class MusicCommands {
     private static final String PREFIX = "-";
 
     public MusicCommands() {
+
+    }
+
+    public void shuffleCurrentPlaylist(String[] message, MessageReceivedEvent event) {
+        TrackScheduler ts = PlayerManager.getInstance().getMusicManager(event.getGuild()).trackScheduler;
+        ts.shuffle();
+        event.getChannel().sendMessage("Playlist is shuffled!").queue();
 
     }
 
@@ -79,7 +90,7 @@ public class MusicCommands {
             messageEmbed = new EmbedBuilder()
                     .setDescription("No Songs in the queue")
                     .build();
-            event.getChannel().sendMessage(messageEmbed).queue();
+            event.getChannel().sendMessageEmbeds(messageEmbed).queue();
         } else {
             String compileList = "";
             int position = 1;
@@ -104,7 +115,7 @@ public class MusicCommands {
                     .setTimestamp(OffsetDateTime.now())
                     .setFooter("Youtube Analytics", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
                     .build();
-            event.getChannel().sendMessage(messageEmbed).queue();
+            event.getChannel().sendMessageEmbeds(messageEmbed).queue();
         }
     }
 
@@ -116,7 +127,7 @@ public class MusicCommands {
             MessageEmbed messageEmbed = new EmbedBuilder()
                     .setDescription("No Song is playing currently!")
                     .build();
-            event.getChannel().sendMessage(messageEmbed).queue();
+            event.getChannel().sendMessageEmbeds(messageEmbed).queue();
             return;
         }
         String title = audioTrack.getInfo().title;
@@ -141,7 +152,7 @@ public class MusicCommands {
                 .setTimestamp(OffsetDateTime.now())
                 .setFooter("Youtube Analytics", "https://gamepress.gg/grandorder/sites/grandorder/files/2018-08/196_Ereshkigal_4.png")
                 .build();
-        event.getChannel().sendMessage(messageEmbed).queue();
+        event.getChannel().sendMessageEmbeds(messageEmbed).queue();
     }
 
 
@@ -237,7 +248,7 @@ public class MusicCommands {
             event.getChannel().sendMessage("Must be in the same voice channel!").queue();
             return;
         }
-        TextChannel channel = event.getTextChannel();
+        TextChannel channel = event.getChannel().asTextChannel();
         Member self = event.getGuild().getSelfMember();
         Member user = event.getMember();
         String link = message[1];
@@ -261,9 +272,8 @@ public class MusicCommands {
     //invokes and plays the URL
     public void handle(TextChannel channel, Member selfUser, Member user, String url, MessageReceivedEvent event) {
 
-        final Member member = user;
-        final GuildVoiceState memberVoiceState = member.getVoiceState();
-        if (!memberVoiceState.inVoiceChannel()) {
+        final GuildVoiceState memberVoiceState = user.getVoiceState();
+        if (!memberVoiceState.inAudioChannel()) {
             channel.sendMessage("You need to be in a voice channel!").queue();
             return;
         }
@@ -274,7 +284,7 @@ public class MusicCommands {
 
     //make bot join the same voice channel as user. If not in the same voice channel then invoke a message
     public void join(MessageReceivedEvent event) {
-        VoiceChannel channel = event.getMember().getVoiceState().getChannel();
+        VoiceChannel channel = event.getMember().getVoiceState().getChannel().asVoiceChannel();
         if (channel == null) {
             event.getChannel().sendMessage("You are not in a voice channel!").queue();
             return;

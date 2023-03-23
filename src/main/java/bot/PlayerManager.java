@@ -8,7 +8,7 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 import java.util.HashMap;
 import java.util.List;
@@ -46,10 +46,7 @@ public class PlayerManager {
             public void trackLoaded(AudioTrack audioTrack) {
                 musicManager.trackScheduler.queue(audioTrack);
                 musicManager.trackScheduler.setCurrentlyPlaying();
-                textChannel.sendMessage("` Adding to Queue: ")
-                        .append(audioTrack.getInfo().title)
-                        .append(" by ")
-                        .append(audioTrack.getInfo().author + "`").queue();
+                textChannel.sendMessage("` Adding to Queue: " + audioTrack.getInfo().title + " by " + audioTrack.getInfo().author + "`").queue();
             }
 
             @Override
@@ -57,20 +54,13 @@ public class PlayerManager {
                 if (audioPlaylist.isSearchResult()) {
                     AudioTrack track = audioPlaylist.getTracks().get(0);
                     musicManager.trackScheduler.queue(track);
-                    textChannel.sendMessage("` Adding to Queue: ")
-                            .append(track.getInfo().title)
-                            .append(" by ")
-                            .append(track.getInfo().author + "`").queue();
+                    textChannel.sendMessage("` Adding to Queue: " + track.getInfo().title + " by " + track.getInfo().author + "`").queue();
                    return;
                 } else {
                     List<AudioTrack> playlist = audioPlaylist.getTracks();
                     for (AudioTrack at : playlist)
                         musicManager.trackScheduler.queue(at);
-                    textChannel.sendMessage("` Adding to Queue: ")
-                            .append(String.valueOf(+playlist.size()))
-                            .append(" songs from bot.Playlist ")
-                            .append(audioPlaylist.getName() + "`")
-                            .queue();
+                    textChannel.sendMessage("` Adding to Queue: " + String.valueOf(+playlist.size()) + " songs from Playlist " + audioPlaylist.getName() + "`" ).queue();
                 }
             }
 

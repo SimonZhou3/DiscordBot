@@ -49,7 +49,7 @@ public class AnimeCommands {
                     .addField("Producer", studio.getName(), true)
                     .addField("Rating", anime.score + " ⭐", true)
                     .build();
-            event.getChannel().sendMessage(embed).queue();
+            event.getChannel().sendMessageEmbeds(embed).queue();
         } catch (Exception e) {
             event.getChannel().sendMessage("Unable to find Any anime named: " + name).queue();
         }
