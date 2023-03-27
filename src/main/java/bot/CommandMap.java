@@ -3,7 +3,6 @@ package bot;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
-import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -48,8 +47,8 @@ public class CommandMap extends ListenerAdapter {
 
     private static final String PREFIX = "-";
     private static final int SIZEIMAGE = 31;
-//    private MongoClient client = MongoClients.create(System.getenv("MONGO2"));
-    private MongoClient client = MongoClients.create(Dotenv.load().get("MONGO2"));
+    private MongoClient client = MongoClients.create(System.getenv("MONGO2"));
+//    private MongoClient client = MongoClients.create(Dotenv.load().get("MONGO2"));
 
     private MongoDatabase db = client.getDatabase("playlist");
     private MongoDatabase dbAnime = client.getDatabase("anime");

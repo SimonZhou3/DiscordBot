@@ -74,7 +74,7 @@ public class PlaylistCommands extends MusicCommands {
             Bson projection = Projections.fields(Projections.include("isPrivate", "userID"), Projections.excludeId());
             Document isPrivate = collection.find(filter).projection(projection).first();
             if (isPrivate != null) {
-                if (isPrivate.isEmpty()) {
+                if (isPrivate.isEmpty() || isPrivate.get("isPrivate").equals(false)) {
                     publicPlaylist += "- " + s + "\n";
                 } else if (isPrivate.get("userID").equals(event.getAuthor().getId())) {
                     personalPlaylist += "- " + s + "\n";
@@ -167,7 +167,7 @@ public class PlaylistCommands extends MusicCommands {
     }
 
     //MODIFIES: this
-    //EFFECT: Creates a JSON file with the name of the playlist, bot.Playlist name must be one word.
+    //EFFECT: Creates a JSON file with the name of the playlist, Playlist name must be one word.
     public void createPlaylist(String[] message, MessageReceivedEvent event) {
         if (message.length < 3) {
             event.getChannel().sendMessage("Invalid usage -- [name][public/private]").queue();
@@ -184,6 +184,11 @@ public class PlaylistCommands extends MusicCommands {
             String userID = event.getAuthor().getId();
             Document obj = new Document("isPrivate", true);
             obj.append("userID", userID);
+            MongoCollection<Document> col = db.getCollection(playlistName);
+            col.insertOne(obj);
+        } else {
+            String userID = event.getAuthor().getId();
+            Document obj = new Document("isPrivate", false);
             MongoCollection<Document> col = db.getCollection(playlistName);
             col.insertOne(obj);
         }
@@ -226,7 +231,7 @@ public class PlaylistCommands extends MusicCommands {
         Bson filter = Filters.empty();
         Bson projection = Projections.fields(Projections.include("isPrivate", "userID"), Projections.excludeId());
         Document isPrivate = collection.find(filter).projection(projection).first();
-        if (isPrivate.isEmpty() || (isPrivate.get("userID").equals(event.getAuthor().getId()))) {
+        if (isPrivate.isEmpty() || isPrivate.get("isPrivate").equals(false) || (isPrivate.get("userID").equals(event.getAuthor().getId()))) {
             return true;
         } else if (!isPrivate.get("userID").equals(event.getAuthor().getId())) {
             return false;
@@ -263,7 +268,7 @@ public class PlaylistCommands extends MusicCommands {
                 if (!doc.containsKey("userID") && !doc.containsKey("isPrivate")) {
                     String link = getYouTubeId((String) doc.get("link"));
                     try {
-//                        URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id="+link+"&key="+Dotenv.load().get("YOUTUBE_APIKEY"));
+//                        URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id="+link+"&key="+ Dotenv.load().get("YOUTUBE_APIKEY"));
                         URL url = new URL("https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id=" + link + "&key=" + System.getenv("YOUTUBE_APIKEY"));
                         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                         connection.setRequestMethod("GET");
